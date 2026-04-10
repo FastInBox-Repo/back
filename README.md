@@ -50,6 +50,12 @@ npm run test:e2e
 - Postgres Docker: porta `5451`
 - Redis Docker: porta `6380`
 
+## Sprint 1 - modo deploy unico
+
+Para a entrega da Sprint 1 em um unico deploy na Vercel, o fluxo funcional principal foi consolidado no `front` com persistencia local para demonstracao academica.
+
+Este backend permanece no repositorio para evolucao das proximas sprints (API real, banco e integracoes), mas nao e obrigatorio para rodar a demo da Sprint 1.
+
 ## Infra local
 
 ```bash
