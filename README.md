@@ -43,6 +43,35 @@ npm run test
 npm run test:e2e
 ```
 
+## Variaveis de ambiente minimas
+
+Use o arquivo `.env.example` como base:
+
+- `PORT`: porta HTTP da API (padrao `4001`)
+- `FRONTEND_URL`: origem permitida no CORS
+- `DATA_FILE`: caminho do JSON de persistencia local (padrao `data/db.json`)
+
+## API Sprint 3 (persistencia em arquivo)
+
+Esta API usa persistencia local em JSON para evidenciar fluxo server-side sem dependencias externas.
+
+- Seed inicial em `data/db.json`
+- Sessoes de login persistidas em `sessions` dentro do mesmo arquivo
+- Perfis suportados: `admin`, `nutricionista`, `paciente`, `cozinha`
+
+### Rotas principais
+
+- `POST /auth/login`
+- `GET /health`
+- `GET/POST/PATCH /patients` (com restricao de role e owner)
+- `GET/POST /ingredients` (com restricao por role)
+- `POST /orders`
+- `GET /orders`
+- `GET /orders/code/:code` (resposta segura por codigo)
+- `PATCH /orders/:id/status`
+- `PATCH /orders/:id/confirm`
+- `GET /audit` (admin)
+
 ## Ambiente local
 
 - API: `http://localhost:4001`

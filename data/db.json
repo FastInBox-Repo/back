@@ -1,0 +1,259 @@
+{
+  "users": [
+    {
+      "id": "usr_admin_1",
+      "name": "Admin FastInBox",
+      "email": "admin@fastinbox.local",
+      "password": "admin123",
+      "role": "admin",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "usr_nutri_1",
+      "name": "Nutricionista Demo",
+      "email": "nutri@fastinbox.local",
+      "password": "nutri123",
+      "role": "nutricionista",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "usr_cozinha_1",
+      "name": "Cozinha Central",
+      "email": "cozinha@fastinbox.local",
+      "password": "cozinha123",
+      "role": "cozinha",
+      "kitchenId": "kitchen_main",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "usr_paciente_1",
+      "name": "Paciente Demo",
+      "email": "paciente@fastinbox.local",
+      "password": "paciente123",
+      "role": "paciente",
+      "patientId": "pat_seed_1",
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "sessions": [
+    {
+      "token": "968cbae30f3a504149c822ce0da3a2007e8e2b88aca95527",
+      "userId": "usr_cozinha_1",
+      "createdAt": "2026-05-13T20:53:58.151Z"
+    },
+    {
+      "token": "6e1a942878d528c3b69e9acaf3d123cf395e9a257cfe40b9",
+      "userId": "usr_admin_1",
+      "createdAt": "2026-05-13T20:53:58.331Z"
+    },
+    {
+      "token": "4cf0161833b3f8e02b9b69727fe8b46794f7eed3a8397bd9",
+      "userId": "usr_nutri_1",
+      "createdAt": "2026-05-13T20:54:21.511Z"
+    },
+    {
+      "token": "ecca4add4f428cf8e0f79238ecbc8715fec77a4134542348",
+      "userId": "usr_paciente_1",
+      "createdAt": "2026-05-13T20:54:21.605Z"
+    }
+  ],
+  "patients": [
+    {
+      "id": "pat_seed_1",
+      "ownerNutritionistId": "usr_nutri_1",
+      "name": "Paciente Demo",
+      "email": "paciente@fastinbox.local",
+      "dietaryNotes": "Sem lactose",
+      "createdAt": "2026-01-01T00:00:00.000Z",
+      "updatedAt": "2026-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "pat_a51d9139fb91",
+      "ownerNutritionistId": "usr_nutri_1",
+      "name": "Paciente Sprint3",
+      "email": "sprint3@demo.local",
+      "dietaryNotes": "Sem gluten",
+      "createdAt": "2026-05-13T20:53:58.125Z",
+      "updatedAt": "2026-05-13T20:53:58.125Z"
+    }
+  ],
+  "ingredients": [
+    {
+      "id": "ing_seed_1",
+      "name": "Arroz Integral",
+      "unit": "g",
+      "caloriesPerUnit": 1.3,
+      "active": true,
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "ord_eded8ec4a098",
+      "code": "FIB-SVLVUQ",
+      "createdByNutritionistId": "usr_nutri_1",
+      "patientId": "pat_a51d9139fb91",
+      "kitchenId": "kitchen_main",
+      "status": "EM_PRODUCAO",
+      "items": [
+        {
+          "unitPrice": 29.9,
+          "quantity": 1,
+          "name": "Marmita Fit"
+        }
+      ],
+      "notes": "Pedido Sprint 3",
+      "confirmedByPatient": false,
+      "statusHistory": [
+        {
+          "status": "created",
+          "changedAt": "2026-05-13T20:53:58.138Z",
+          "changedByUserId": "usr_nutri_1"
+        },
+        {
+          "status": "EM_PRODUCAO",
+          "changedAt": "2026-05-13T20:53:58.158Z",
+          "changedByUserId": "usr_cozinha_1"
+        }
+      ],
+      "createdAt": "2026-05-13T20:53:58.138Z",
+      "updatedAt": "2026-05-13T20:53:58.158Z"
+    },
+    {
+      "id": "ord_c485565885cf",
+      "code": "FIB-KBDT5A",
+      "createdByNutritionistId": "usr_nutri_1",
+      "patientId": "pat_seed_1",
+      "kitchenId": "kitchen_main",
+      "status": "confirmed_by_patient",
+      "items": [
+        {
+          "unitPrice": 19.9,
+          "quantity": 1,
+          "name": "Marmita Demo"
+        }
+      ],
+      "notes": "Pedido para paciente seed",
+      "confirmedByPatient": true,
+      "statusHistory": [
+        {
+          "status": "created",
+          "changedAt": "2026-05-13T20:54:21.597Z",
+          "changedByUserId": "usr_nutri_1"
+        },
+        {
+          "status": "confirmed_by_patient",
+          "changedAt": "2026-05-13T20:54:21.661Z",
+          "changedByUserId": "usr_paciente_1"
+        }
+      ],
+      "createdAt": "2026-05-13T20:54:21.597Z",
+      "updatedAt": "2026-05-13T20:54:21.661Z"
+    }
+  ],
+  "auditEvents": [
+    {
+      "id": "audit_5f8103714edf",
+      "type": "login",
+      "actorUserId": "usr_nutri_1",
+      "metadata": {
+        "email": "nutri@fastinbox.local"
+      },
+      "timestamp": "2026-05-13T20:53:58.088Z"
+    },
+    {
+      "id": "audit_6784911d4a07",
+      "type": "patient_created",
+      "actorUserId": "usr_nutri_1",
+      "metadata": {
+        "patientId": "pat_a51d9139fb91"
+      },
+      "timestamp": "2026-05-13T20:53:58.127Z"
+    },
+    {
+      "id": "audit_fa9c80884b58",
+      "type": "order_created",
+      "actorUserId": "usr_nutri_1",
+      "metadata": {
+        "orderId": "ord_eded8ec4a098",
+        "code": "FIB-SVLVUQ"
+      },
+      "timestamp": "2026-05-13T20:53:58.140Z"
+    },
+    {
+      "id": "audit_10a08e5ee7dc",
+      "type": "login",
+      "actorUserId": "usr_cozinha_1",
+      "metadata": {
+        "email": "cozinha@fastinbox.local"
+      },
+      "timestamp": "2026-05-13T20:53:58.152Z"
+    },
+    {
+      "id": "audit_11d733c86c25",
+      "type": "order_status_changed",
+      "actorUserId": "usr_cozinha_1",
+      "metadata": {
+        "orderId": "ord_eded8ec4a098",
+        "status": "EM_PRODUCAO"
+      },
+      "timestamp": "2026-05-13T20:53:58.160Z"
+    },
+    {
+      "id": "audit_f5dce0206bbe",
+      "type": "login",
+      "actorUserId": "usr_paciente_1",
+      "metadata": {
+        "email": "paciente@fastinbox.local"
+      },
+      "timestamp": "2026-05-13T20:53:58.168Z"
+    },
+    {
+      "id": "audit_18c2dfbe7220",
+      "type": "login",
+      "actorUserId": "usr_admin_1",
+      "metadata": {
+        "email": "admin@fastinbox.local"
+      },
+      "timestamp": "2026-05-13T20:53:58.333Z"
+    },
+    {
+      "id": "audit_e2895160aa7e",
+      "type": "login",
+      "actorUserId": "usr_nutri_1",
+      "metadata": {
+        "email": "nutri@fastinbox.local"
+      },
+      "timestamp": "2026-05-13T20:54:21.513Z"
+    },
+    {
+      "id": "audit_d4eab15b3ed2",
+      "type": "order_created",
+      "actorUserId": "usr_nutri_1",
+      "metadata": {
+        "orderId": "ord_c485565885cf",
+        "code": "FIB-KBDT5A"
+      },
+      "timestamp": "2026-05-13T20:54:21.599Z"
+    },
+    {
+      "id": "audit_7bb6575ab154",
+      "type": "login",
+      "actorUserId": "usr_paciente_1",
+      "metadata": {
+        "email": "paciente@fastinbox.local"
+      },
+      "timestamp": "2026-05-13T20:54:21.607Z"
+    },
+    {
+      "id": "audit_47d2ad89778a",
+      "type": "order_status_changed",
+      "actorUserId": "usr_paciente_1",
+      "metadata": {
+        "orderId": "ord_c485565885cf",
+        "status": "confirmed_by_patient"
+      },
+      "timestamp": "2026-05-13T20:54:21.671Z"
+    }
+  ]
+}
