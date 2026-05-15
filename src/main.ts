@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -10,7 +11,7 @@ async function bootstrap() {
     throw new Error('Invalid PORT value. Use a positive integer.');
   }
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.enableCors({
     origin: [process.env.FRONTEND_URL ?? 'http://localhost:3001'],
     credentials: true,

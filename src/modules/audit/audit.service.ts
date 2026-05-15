@@ -1,38 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import type { AuditEventRecord } from '../../common/types/domain.types';
-import { createId } from '../../common/utils/id.util';
-import { DataStoreService } from '../../infra/data-store.service';
 
-interface LogAuditInput {
-  type: AuditEventRecord['type'];
-  actorUserId?: string;
-  metadata?: Record<string, string | number | boolean | null>;
+import { newId, nowUtc } from '../../common/ids';
+
+export interface AuditEntry {
+  id: string;
+  actorId?: string;
+  actorRole?: string;
+  action: string;
+  resource: string;
+  resourceId?: string;
+  outcome: 'allowed' | 'denied';
+  metadata?: Record<string, unknown>;
+  ip?: string;
+  userAgent?: string;
+  createdAt: Date;
 }
 
 @Injectable()
 export class AuditService {
-  constructor(private readonly dataStoreService: DataStoreService) {}
+  private readonly entries: AuditEntry[] = [];
 
-  async listEvents(): Promise<AuditEventRecord[]> {
-    const data = await this.dataStoreService.readData();
-    return [...data.auditEvents].sort((a, b) =>
-      a.timestamp < b.timestamp ? 1 : -1,
-    );
+  record(entry: Omit<AuditEntry, 'id' | 'createdAt'>): AuditEntry {
+    const recorded: AuditEntry = { ...entry, id: newId(), createdAt: nowUtc() };
+    this.entries.push(recorded);
+    return recorded;
   }
 
-  async logEvent(input: LogAuditInput): Promise<AuditEventRecord> {
-    const event: AuditEventRecord = {
-      id: createId('audit'),
-      type: input.type,
-      actorUserId: input.actorUserId,
-      metadata: input.metadata,
-      timestamp: new Date().toISOString(),
-    };
-
-    await this.dataStoreService.updateData((db) => {
-      db.auditEvents.push(event);
-    });
-
-    return event;
+  list(
+    filter: {
+      actorId?: string;
+      action?: string;
+      resource?: string;
+      outcome?: 'allowed' | 'denied';
+      from?: Date;
+      to?: Date;
+    } = {},
+  ): AuditEntry[] {
+    return this.entries
+      .filter((e) => !filter.actorId || e.actorId === filter.actorId)
+      .filter((e) => !filter.action || e.action === filter.action)
+      .filter((e) => !filter.resource || e.resource === filter.resource)
+      .filter((e) => !filter.outcome || e.outcome === filter.outcome)
+      .filter((e) => !filter.from || e.createdAt >= filter.from)
+      .filter((e) => !filter.to || e.createdAt <= filter.to)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 }

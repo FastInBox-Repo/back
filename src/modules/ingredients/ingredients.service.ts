@@ -1,43 +1,89 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import type { IngredientRecord } from '../../common/types/domain.types';
-import { createId } from '../../common/utils/id.util';
-import { DataStoreService } from '../../infra/data-store.service';
+import { Injectable } from '@nestjs/common';
 
-interface CreateIngredientInput {
-  name?: string;
-  unit?: string;
-  caloriesPerUnit?: number;
-}
+import { NotFoundDomainError } from '../../common/domain-errors';
+import { newId, nowUtc } from '../../common/ids';
+import type { Composition, Ingredient, Packaging } from './ingredient.entity';
 
 @Injectable()
 export class IngredientsService {
-  constructor(private readonly dataStoreService: DataStoreService) {}
+  private readonly ingredients = new Map<string, Ingredient>();
+  private readonly compositions = new Map<string, Composition>();
+  private readonly packagings = new Map<string, Packaging>();
 
-  async listIngredients(): Promise<IngredientRecord[]> {
-    const data = await this.dataStoreService.readData();
-    return data.ingredients;
+  createIngredient(input: Omit<Ingredient, 'id' | 'effectiveAt'>): Ingredient {
+    const ingredient: Ingredient = {
+      ...input,
+      id: newId(),
+      effectiveAt: nowUtc(),
+    };
+    this.ingredients.set(ingredient.id, ingredient);
+    return ingredient;
   }
 
-  async createIngredient(
-    payload: CreateIngredientInput,
-  ): Promise<IngredientRecord> {
-    if (!payload.name || !payload.unit) {
-      throw new BadRequestException('name e unit sao obrigatorios.');
-    }
+  listIngredients(
+    clinicId: string,
+    filter: { category?: string; isAvailable?: boolean; q?: string } = {},
+  ): Ingredient[] {
+    return [...this.ingredients.values()]
+      .filter((i) => i.clinicId === clinicId && !i.archivedAt)
+      .filter((i) => !filter.category || i.category === filter.category)
+      .filter(
+        (i) =>
+          filter.isAvailable === undefined ||
+          i.isAvailable === filter.isAvailable,
+      )
+      .filter(
+        (i) =>
+          !filter.q || i.name.toLowerCase().includes(filter.q.toLowerCase()),
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
 
-    const ingredient: IngredientRecord = {
-      id: createId('ing'),
-      name: payload.name.trim(),
-      unit: payload.unit.trim(),
-      caloriesPerUnit: payload.caloriesPerUnit,
-      active: true,
-      createdAt: new Date().toISOString(),
+  findIngredient(id: string): Ingredient {
+    const i = this.ingredients.get(id);
+    if (!i) throw new NotFoundDomainError('INGREDIENT_NOT_FOUND');
+    return i;
+  }
+
+  createComposition(
+    input: Omit<Composition, 'id' | 'createdAt' | 'updatedAt'>,
+  ): Composition {
+    const now = nowUtc();
+    const composition: Composition = {
+      ...input,
+      id: newId(),
+      createdAt: now,
+      updatedAt: now,
     };
+    this.compositions.set(composition.id, composition);
+    return composition;
+  }
 
-    await this.dataStoreService.updateData((db) => {
-      db.ingredients.push(ingredient);
-    });
+  listCompositions(clinicId: string): Composition[] {
+    return [...this.compositions.values()].filter(
+      (c) => c.clinicId === clinicId,
+    );
+  }
 
-    return ingredient;
+  findComposition(id: string): Composition {
+    const c = this.compositions.get(id);
+    if (!c) throw new NotFoundDomainError('COMPOSITION_NOT_FOUND');
+    return c;
+  }
+
+  createPackaging(input: Omit<Packaging, 'id'>): Packaging {
+    const pack: Packaging = { ...input, id: newId() };
+    this.packagings.set(pack.id, pack);
+    return pack;
+  }
+
+  listPackagings(clinicId: string): Packaging[] {
+    return [...this.packagings.values()].filter((p) => p.clinicId === clinicId);
+  }
+
+  findPackaging(id: string): Packaging {
+    const p = this.packagings.get(id);
+    if (!p) throw new NotFoundDomainError('PACKAGING_NOT_FOUND');
+    return p;
   }
 }

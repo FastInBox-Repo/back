@@ -1,124 +1,122 @@
+import { Injectable } from '@nestjs/common';
+
 import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import type { PatientRecord } from '../../common/types/domain.types';
-import { createId } from '../../common/utils/id.util';
-import { DataStoreService } from '../../infra/data-store.service';
-import { AuditService } from '../audit/audit.service';
-
-interface CreatePatientInput {
-  name?: string;
-  email?: string;
-  dietaryNotes?: string;
-}
-
-interface UpdatePatientInput {
-  name?: string;
-  email?: string;
-  dietaryNotes?: string;
-}
+  ConflictDomainError,
+  ForbiddenDomainError,
+  NotFoundDomainError,
+  ValidationDomainError,
+} from '../../common/domain-errors';
+import { newId, nowUtc } from '../../common/ids';
+import type { Patient } from './patient.entity';
 
 @Injectable()
 export class PatientsService {
-  constructor(
-    private readonly dataStoreService: DataStoreService,
-    private readonly auditService: AuditService,
-  ) {}
+  private readonly patients = new Map<string, Patient>();
 
-  async listByNutritionist(nutritionistId: string): Promise<PatientRecord[]> {
-    const data = await this.dataStoreService.readData();
-    return data.patients.filter(
-      (patient) => patient.ownerNutritionistId === nutritionistId,
-    );
-  }
-
-  async createPatient(
-    nutritionistId: string,
-    payload: CreatePatientInput,
-  ): Promise<PatientRecord> {
-    if (!payload.name || !payload.email) {
-      throw new BadRequestException('name e email sao obrigatorios.');
+  create(input: Omit<Patient, 'id' | 'createdAt' | 'updatedAt'>): Patient {
+    if (!isValidCpf(input.cpf)) {
+      throw new ValidationDomainError(
+        'PATIENT_CPF_INVALID',
+        'CPF informado invalido',
+      );
     }
-
-    const now = new Date().toISOString();
-    const patient: PatientRecord = {
-      id: createId('pat'),
-      ownerNutritionistId: nutritionistId,
-      name: payload.name.trim(),
-      email: payload.email.trim().toLowerCase(),
-      dietaryNotes: payload.dietaryNotes?.trim(),
+    const duplicated = [...this.patients.values()].find(
+      (p) =>
+        !p.deletedAt &&
+        p.clinicId === input.clinicId &&
+        stripDigits(p.cpf) === stripDigits(input.cpf),
+    );
+    if (duplicated) {
+      throw new ConflictDomainError(
+        'PATIENT_CPF_TAKEN',
+        'CPF ja cadastrado nesta clinica',
+      );
+    }
+    const now = nowUtc();
+    const patient: Patient = {
+      ...input,
+      id: newId(),
       createdAt: now,
       updatedAt: now,
     };
-
-    await this.dataStoreService.updateData((db) => {
-      const emailAlreadyUsed = db.patients.some(
-        (existing) => existing.email.toLowerCase() === patient.email.toLowerCase(),
-      );
-      if (emailAlreadyUsed) {
-        throw new BadRequestException('Ja existe paciente com este email.');
-      }
-      db.patients.push(patient);
-    });
-
-    await this.auditService.logEvent({
-      type: 'patient_created',
-      actorUserId: nutritionistId,
-      metadata: {
-        patientId: patient.id,
-      },
-    });
-
+    this.patients.set(patient.id, patient);
     return patient;
   }
 
-  async updatePatient(
-    patientId: string,
-    nutritionistId: string,
-    payload: UpdatePatientInput,
-  ): Promise<PatientRecord> {
-    const updatedPatient = await this.dataStoreService.updateData((db) => {
-      const patient = db.patients.find((item) => item.id === patientId);
-      if (!patient) {
-        throw new NotFoundException('Paciente nao encontrado.');
-      }
+  findById(id: string): Patient {
+    const p = this.patients.get(id);
+    if (!p || p.deletedAt) throw new NotFoundDomainError('PATIENT_NOT_FOUND');
+    return p;
+  }
 
-      if (patient.ownerNutritionistId !== nutritionistId) {
-        throw new ForbiddenException('Voce so pode editar seus pacientes.');
-      }
+  list(filter: {
+    clinicId: string;
+    nutritionistId?: string;
+    q?: string;
+    includeArchived?: boolean;
+  }): Patient[] {
+    return [...this.patients.values()]
+      .filter((p) => p.clinicId === filter.clinicId)
+      .filter((p) => filter.includeArchived || !p.deletedAt)
+      .filter(
+        (p) =>
+          !filter.nutritionistId || p.nutritionistId === filter.nutritionistId,
+      )
+      .filter(
+        (p) =>
+          !filter.q ||
+          p.fullName.toLowerCase().includes(filter.q.toLowerCase()),
+      )
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
+  }
 
-      if (payload.email) {
-        const normalizedEmail = payload.email.trim().toLowerCase();
-        const duplicate = db.patients.some(
-          (candidate) =>
-            candidate.id !== patient.id &&
-            candidate.email.toLowerCase() === normalizedEmail,
-        );
-        if (duplicate) {
-          throw new BadRequestException('Ja existe paciente com este email.');
-        }
-        patient.email = normalizedEmail;
-      }
-
-      if (payload.name) {
-        patient.name = payload.name.trim();
-      }
-
-      if (typeof payload.dietaryNotes === 'string') {
-        patient.dietaryNotes = payload.dietaryNotes.trim();
-      }
-
-      patient.updatedAt = new Date().toISOString();
-    });
-
-    const patient = updatedPatient.patients.find((item) => item.id === patientId);
-    if (!patient) {
-      throw new NotFoundException('Paciente nao encontrado apos atualizacao.');
+  update(
+    id: string,
+    actor: { userId: string; role: string; clinicId?: string },
+    patch: Partial<Patient>,
+  ): Patient {
+    const p = this.findById(id);
+    if (actor.role !== 'admin' && actor.clinicId !== p.clinicId) {
+      throw new ForbiddenDomainError('PATIENT_FOREIGN_TENANT');
     }
-
-    return patient;
+    const next: Patient = {
+      ...p,
+      ...patch,
+      id: p.id,
+      clinicId: p.clinicId,
+      createdAt: p.createdAt,
+      updatedAt: nowUtc(),
+    };
+    this.patients.set(id, next);
+    return next;
   }
+
+  softDelete(id: string, actor: { role: string; clinicId?: string }): Patient {
+    const p = this.findById(id);
+    if (actor.role !== 'admin' && actor.clinicId !== p.clinicId) {
+      throw new ForbiddenDomainError('PATIENT_FOREIGN_TENANT');
+    }
+    const next: Patient = { ...p, deletedAt: nowUtc(), updatedAt: nowUtc() };
+    this.patients.set(id, next);
+    return next;
+  }
+
+  restore(id: string): Patient {
+    const p = this.patients.get(id);
+    if (!p) throw new NotFoundDomainError('PATIENT_NOT_FOUND');
+    const next: Patient = { ...p, deletedAt: undefined, updatedAt: nowUtc() };
+    this.patients.set(id, next);
+    return next;
+  }
+}
+
+function stripDigits(value: string): string {
+  return value.replace(/\D+/g, '');
+}
+
+function isValidCpf(value: string): boolean {
+  const digits = stripDigits(value);
+  if (digits.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+  return true;
 }

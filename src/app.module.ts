@@ -1,28 +1,39 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
-import { AuthGuard } from './common/guards/auth.guard';
-import { RolesGuard } from './common/guards/roles.guard';
-import { InfraModule } from './infra/infra.module';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { AuthGuard } from './common/auth.guard';
+import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
 import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
-import { HealthModule } from './modules/health/health.module';
+import { ClinicsModule } from './modules/clinics/clinics.module';
 import { IngredientsModule } from './modules/ingredients/ingredients.module';
+import { KitchenModule } from './modules/kitchen/kitchen.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PatientsModule } from './modules/patients/patients.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { UsersModule } from './modules/users/users.module';
+import { SeedService } from './seed.service';
 
 @Module({
   imports: [
-    InfraModule,
-    HealthModule,
-    AuditModule,
+    UsersModule,
     AuthModule,
+    ClinicsModule,
     PatientsModule,
     IngredientsModule,
     OrdersModule,
+    PaymentsModule,
+    KitchenModule,
+    AuditModule,
   ],
+  controllers: [AppController],
   providers: [
+    AppService,
+    SeedService,
     { provide: APP_GUARD, useClass: AuthGuard },
-    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_FILTER, useClass: GlobalHttpExceptionFilter },
   ],
 })
 export class AppModule {}

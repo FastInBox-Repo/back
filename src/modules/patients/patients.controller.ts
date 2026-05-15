@@ -1,42 +1,100 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Roles } from '../../common/decorators/roles.decorator';
-import type { SafeUser } from '../../common/types/domain.types';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+} from '@nestjs/common';
+import type { Request } from 'express';
+
+import { Roles } from '../../common/decorators';
+import { ForbiddenDomainError } from '../../common/domain-errors';
 import { PatientsService } from './patients.service';
 
-interface CreatePatientBody {
-  name?: string;
-  email?: string;
-  dietaryNotes?: string;
-}
-
-interface UpdatePatientBody {
-  name?: string;
-  email?: string;
-  dietaryNotes?: string;
+interface AuthedRequest extends Request {
+  user?: {
+    userId: string;
+    role: 'admin' | 'nutritionist' | 'kitchen' | 'patient';
+    clinicId?: string;
+  };
 }
 
 @Controller('patients')
-@Roles('nutricionista')
 export class PatientsController {
-  constructor(private readonly patientsService: PatientsService) {}
+  constructor(private readonly patients: PatientsService) {}
 
+  @Roles('admin', 'nutritionist')
   @Get()
-  listPatients(@CurrentUser() user: SafeUser) {
-    return this.patientsService.listByNutritionist(user.id);
+  list(@Req() req: AuthedRequest, @Query('q') q?: string) {
+    if (!req.user?.clinicId)
+      throw new ForbiddenDomainError('PATIENT_TENANT_MISSING');
+    return this.patients.list({
+      clinicId: req.user.clinicId,
+      nutritionistId:
+        req.user.role === 'nutritionist' ? req.user.userId : undefined,
+      q,
+    });
   }
 
+  @Roles('admin', 'nutritionist')
   @Post()
-  createPatient(@CurrentUser() user: SafeUser, @Body() body: CreatePatientBody) {
-    return this.patientsService.createPatient(user.id, body);
+  create(
+    @Req() req: AuthedRequest,
+    @Body() body: Record<string, unknown> & { nutritionistId?: string },
+  ) {
+    if (!req.user?.clinicId)
+      throw new ForbiddenDomainError('PATIENT_TENANT_MISSING');
+    const merged = {
+      ...body,
+      clinicId: req.user.clinicId,
+      nutritionistId:
+        req.user.role === 'nutritionist'
+          ? req.user.userId
+          : (body.nutritionistId ?? ''),
+    } as Parameters<PatientsService['create']>[0];
+    return this.patients.create(merged);
   }
 
+  @Roles('admin', 'nutritionist')
+  @Get(':id')
+  get(@Req() req: AuthedRequest, @Param('id') id: string) {
+    if (!req.user?.clinicId)
+      throw new ForbiddenDomainError('PATIENT_TENANT_MISSING');
+    const patient = this.patients.findById(id);
+    if (req.user.role !== 'admin' && req.user.clinicId !== patient.clinicId) {
+      throw new ForbiddenDomainError('PATIENT_FOREIGN_TENANT');
+    }
+    return patient;
+  }
+
+  @Roles('admin', 'nutritionist')
   @Patch(':id')
-  updatePatient(
-    @CurrentUser() user: SafeUser,
-    @Param('id') patientId: string,
-    @Body() body: UpdatePatientBody,
+  update(
+    @Req() req: AuthedRequest,
+    @Param('id') id: string,
+    @Body() body: any,
   ) {
-    return this.patientsService.updatePatient(patientId, user.id, body);
+    return this.patients.update(
+      id,
+      {
+        userId: req.user!.userId,
+        role: req.user!.role,
+        clinicId: req.user!.clinicId,
+      },
+      body,
+    );
+  }
+
+  @Roles('admin', 'nutritionist')
+  @Delete(':id')
+  remove(@Req() req: AuthedRequest, @Param('id') id: string) {
+    return this.patients.softDelete(id, {
+      role: req.user!.role,
+      clinicId: req.user!.clinicId,
+    });
   }
 }

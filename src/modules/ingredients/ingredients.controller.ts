@@ -1,26 +1,32 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { Roles } from '../../common/decorators/roles.decorator';
+import { Controller, Get, Query, Req } from '@nestjs/common';
+import type { Request } from 'express';
+
+import { ForbiddenDomainError } from '../../common/domain-errors';
 import { IngredientsService } from './ingredients.service';
 
-interface CreateIngredientBody {
-  name?: string;
-  unit?: string;
-  caloriesPerUnit?: number;
+interface AuthedRequest extends Request {
+  user?: { clinicId?: string };
 }
 
-@Controller('ingredients')
+@Controller()
 export class IngredientsController {
-  constructor(private readonly ingredientsService: IngredientsService) {}
+  constructor(private readonly catalog: IngredientsService) {}
 
-  @Get()
-  @Roles('admin', 'nutricionista', 'cozinha')
-  listIngredients() {
-    return this.ingredientsService.listIngredients();
+  @Get('ingredients')
+  listIngredients(@Req() req: AuthedRequest, @Query('q') q?: string) {
+    if (!req.user?.clinicId) throw new ForbiddenDomainError('TENANT_REQUIRED');
+    return this.catalog.listIngredients(req.user.clinicId, { q });
   }
 
-  @Post()
-  @Roles('admin')
-  createIngredient(@Body() body: CreateIngredientBody) {
-    return this.ingredientsService.createIngredient(body);
+  @Get('compositions')
+  listCompositions(@Req() req: AuthedRequest) {
+    if (!req.user?.clinicId) throw new ForbiddenDomainError('TENANT_REQUIRED');
+    return this.catalog.listCompositions(req.user.clinicId);
+  }
+
+  @Get('packagings')
+  listPackagings(@Req() req: AuthedRequest) {
+    if (!req.user?.clinicId) throw new ForbiddenDomainError('TENANT_REQUIRED');
+    return this.catalog.listPackagings(req.user.clinicId);
   }
 }
