@@ -20,10 +20,22 @@ import {
   type OrderStatus,
 } from './order.entity';
 
-interface ActorContext {
+export interface ActorContext {
   userId?: string;
   role?: 'admin' | 'nutritionist' | 'kitchen' | 'patient' | 'public';
   clinicId?: string;
+}
+
+export interface CreateOrderInput {
+  patientId: string;
+  deliveryWindow?: Order['deliveryWindow'];
+  items: {
+    compositionId?: string;
+    packagingId: string;
+    quantity: number;
+    customizations?: OrderItem['customizations'];
+  }[];
+  notes?: string;
 }
 
 @Injectable()
@@ -41,20 +53,7 @@ export class OrdersService {
     private readonly pricing: PricingService,
   ) {}
 
-  create(
-    actor: ActorContext,
-    input: {
-      patientId: string;
-      deliveryWindow?: Order['deliveryWindow'];
-      items: {
-        compositionId?: string;
-        packagingId: string;
-        quantity: number;
-        customizations?: OrderItem['customizations'];
-      }[];
-      notes?: string;
-    },
-  ): Order {
+  create(actor: ActorContext, input: CreateOrderInput): Order {
     if (
       !actor.clinicId ||
       !actor.userId ||

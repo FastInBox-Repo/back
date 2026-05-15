@@ -6,7 +6,7 @@ import { newId } from '../../common/ids';
 import { UsersService } from '../users/users.service';
 import type { User, UserRole } from '../users/user.entity';
 
-interface SessionToken {
+export interface SessionToken {
   id: string;
   userId: string;
   role: UserRole;

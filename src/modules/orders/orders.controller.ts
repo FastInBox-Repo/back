@@ -2,16 +2,13 @@ import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import type { Request } from 'express';
 
 import { Roles } from '../../common/decorators';
+import type { SessionToken } from '../auth/auth.service';
 import { OrderEventsService } from './order-events.service';
-import { OrdersService } from './orders.service';
+import { OrdersService, type CreateOrderInput } from './orders.service';
 import type { OrderStatus } from './order.entity';
 
 interface AuthedRequest extends Request {
-  user?: {
-    userId: string;
-    role: 'admin' | 'nutritionist' | 'kitchen' | 'patient';
-    clinicId?: string;
-  };
+  user?: SessionToken;
 }
 
 @Controller('orders')
@@ -23,14 +20,14 @@ export class OrdersController {
 
   @Roles('admin', 'nutritionist')
   @Post()
-  create(@Req() req: AuthedRequest, @Body() body: any) {
-    return this.orders.create(req.user as any, body);
+  create(@Req() req: AuthedRequest, @Body() body: CreateOrderInput) {
+    return this.orders.create(req.user!, body);
   }
 
   @Roles('admin', 'nutritionist')
   @Post(':id/submit')
   submit(@Req() req: AuthedRequest, @Param('id') id: string) {
-    return this.orders.submit(req.user as any, id);
+    return this.orders.submit(req.user!, id);
   }
 
   @Roles('admin', 'nutritionist', 'kitchen')
@@ -64,19 +61,19 @@ export class OrdersController {
   @Roles('admin', 'kitchen')
   @Post(':id/start-production')
   startProduction(@Req() req: AuthedRequest, @Param('id') id: string) {
-    return this.orders.startProduction(req.user as any, id);
+    return this.orders.startProduction(req.user!, id);
   }
 
   @Roles('admin', 'kitchen')
   @Post(':id/mark-ready')
   markReady(@Req() req: AuthedRequest, @Param('id') id: string) {
-    return this.orders.markReady(req.user as any, id);
+    return this.orders.markReady(req.user!, id);
   }
 
   @Roles('admin', 'kitchen')
   @Post(':id/mark-delivered')
   markDelivered(@Req() req: AuthedRequest, @Param('id') id: string) {
-    return this.orders.markDelivered(req.user as any, id);
+    return this.orders.markDelivered(req.user!, id);
   }
 
   @Roles('admin', 'nutritionist')
@@ -87,7 +84,7 @@ export class OrdersController {
     @Body() body: { reason?: string },
   ) {
     return this.orders.cancel(
-      req.user as any,
+      req.user!,
       id,
       body?.reason ?? 'Cancelado pelo operador',
     );

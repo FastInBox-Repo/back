@@ -13,14 +13,12 @@ import type { Request } from 'express';
 
 import { Roles } from '../../common/decorators';
 import { ForbiddenDomainError } from '../../common/domain-errors';
+import type { SessionToken } from '../auth/auth.service';
 import { PatientsService } from './patients.service';
+import type { Patient } from './patient.entity';
 
 interface AuthedRequest extends Request {
-  user?: {
-    userId: string;
-    role: 'admin' | 'nutritionist' | 'kitchen' | 'patient';
-    clinicId?: string;
-  };
+  user?: SessionToken;
 }
 
 @Controller('patients')
@@ -76,7 +74,7 @@ export class PatientsController {
   update(
     @Req() req: AuthedRequest,
     @Param('id') id: string,
-    @Body() body: any,
+    @Body() body: Partial<Patient>,
   ) {
     return this.patients.update(
       id,
