@@ -11,9 +11,9 @@ export interface ProviderIntent {
 @Injectable()
 export class MockPaymentProvider {
   createIntent(orderId: string, amountCents: number): ProviderIntent {
-    const providerIntentId = `mock_${newId()}`;
+    const providerIntentId = `tx_${newId()}`;
     const expiresAt = new Date(Date.now() + 90 * 60 * 1000);
-    const redirectUrl = `https://sandbox.fastinbox.test/checkout/${providerIntentId}?order=${orderId}&amount=${amountCents}`;
+    const redirectUrl = `https://checkout.fastinbox.app/${providerIntentId}?order=${orderId}&amount=${amountCents}`;
     return { providerIntentId, redirectUrl, expiresAt };
   }
 }

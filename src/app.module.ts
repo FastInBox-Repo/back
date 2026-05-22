@@ -13,6 +13,7 @@ import { KitchenModule } from './modules/kitchen/kitchen.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PatientsModule } from './modules/patients/patients.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import { UsersModule } from './modules/users/users.module';
 import { SeedService } from './seed.service';
 
@@ -27,6 +28,7 @@ import { SeedService } from './seed.service';
     PaymentsModule,
     KitchenModule,
     AuditModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [
