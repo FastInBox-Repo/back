@@ -120,7 +120,9 @@ export class ReportsService {
       row.payoutCents += o.totalCents - o.commissionCents;
       rows.set(key, row);
     }
-    return [...rows.values()].sort((a, b) => b.commissionCents - a.commissionCents);
+    return [...rows.values()].sort(
+      (a, b) => b.commissionCents - a.commissionCents,
+    );
   }
 
   toCsvCommissions(rows: CommissionRow[]): string {

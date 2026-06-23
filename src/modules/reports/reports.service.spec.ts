@@ -29,9 +29,20 @@ describe('ReportsService', () => {
   let reports: ReportsService;
   const orders: Order[] = [
     makeOrder({ id: 'o1', status: 'DELIVERED' }),
-    makeOrder({ id: 'o2', status: 'PAID', totalCents: 20000, commissionCents: 4000 }),
+    makeOrder({
+      id: 'o2',
+      status: 'PAID',
+      totalCents: 20000,
+      commissionCents: 4000,
+    }),
     makeOrder({ id: 'o3', status: 'CANCELLED' }),
-    makeOrder({ id: 'o4', status: 'IN_PRODUCTION', nutritionistId: 'n2', totalCents: 5000, commissionCents: 1000 }),
+    makeOrder({
+      id: 'o4',
+      status: 'IN_PRODUCTION',
+      nutritionistId: 'n2',
+      totalCents: 5000,
+      commissionCents: 1000,
+    }),
   ];
 
   beforeEach(async () => {

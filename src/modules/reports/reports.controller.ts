@@ -2,6 +2,7 @@ import { Controller, Get, Header, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 
 import { Roles } from '../../common/decorators';
+import { ForecastService } from './forecast.service';
 import { ReportsService } from './reports.service';
 import type { OrderStatus } from '../orders/order.entity';
 
@@ -13,7 +14,10 @@ function parseDate(input?: string): Date | undefined {
 
 @Controller('admin/reports')
 export class ReportsController {
-  constructor(private readonly reports: ReportsService) {}
+  constructor(
+    private readonly reports: ReportsService,
+    private readonly forecastService: ForecastService,
+  ) {}
 
   @Roles('admin')
   @Get('operations')
@@ -61,5 +65,18 @@ export class ReportsController {
       clinicId,
     });
     return this.reports.toCsvCommissions(rows);
+  }
+
+  @Roles('admin')
+  @Get('forecast')
+  forecast(@Query('days') days?: string, @Query('clinicId') clinicId?: string) {
+    const parsedDays = days ? Number.parseInt(days, 10) : undefined;
+    return this.forecastService.forecast({
+      clinicId,
+      days:
+        parsedDays !== undefined && Number.isFinite(parsedDays)
+          ? parsedDays
+          : undefined,
+    });
   }
 }

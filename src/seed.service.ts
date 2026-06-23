@@ -4,6 +4,8 @@ import { ClinicsService } from './modules/clinics/clinics.service';
 import { IngredientsService } from './modules/ingredients/ingredients.service';
 import { OrdersService } from './modules/orders/orders.service';
 import { PatientsService } from './modules/patients/patients.service';
+import { SelfServiceService } from './modules/self-service/self-service.service';
+import { SubscriptionsService } from './modules/subscriptions/subscriptions.service';
 import { UsersService } from './modules/users/users.service';
 
 @Injectable()
@@ -16,6 +18,8 @@ export class SeedService implements OnModuleInit {
     private readonly patients: PatientsService,
     private readonly catalog: IngredientsService,
     private readonly orders: OrdersService,
+    private readonly selfService: SelfServiceService,
+    private readonly subscriptions: SubscriptionsService,
   ) {}
 
   onModuleInit() {
@@ -144,7 +148,7 @@ export class SeedService implements OnModuleInit {
       restrictions: ['Glutem'],
     });
 
-    const _beto = this.patients.create({
+    const beto = this.patients.create({
       clinicId: clinic.id,
       nutritionistId: nutritionist.id,
       fullName: 'Beto Lima',
@@ -152,6 +156,17 @@ export class SeedService implements OnModuleInit {
       email: 'beto.lima@example.com',
       phone: '+55 11 99999-0002',
       preferences: ['Maior volume'],
+      restrictions: [],
+    });
+
+    const carla = this.patients.create({
+      clinicId: clinic.id,
+      nutritionistId: nutritionist.id,
+      fullName: 'Carla Dias',
+      cpf: '11144477735',
+      email: 'carla.dias@example.com',
+      phone: '+55 11 99999-0003',
+      preferences: ['Low carb'],
       restrictions: [],
     });
 
@@ -178,10 +193,167 @@ export class SeedService implements OnModuleInit {
       sampleOrder.id,
     );
 
+    const selfServiceCode = this.selfService.generate({
+      clinicId: clinic.id,
+      nutritionistId: nutritionist.id,
+    });
+
+    const nutriActor = {
+      userId: nutritionist.id,
+      role: 'nutritionist' as const,
+      clinicId: clinic.id,
+    };
+
+    const kitchenActor = {
+      userId: kitchen.id,
+      role: 'kitchen' as const,
+      clinicId: clinic.id,
+    };
+
+    // Three subscriptions with staggered first-run dates and varied delivery
+    // windows so the forecast surfaces multiple near-term windows. Ana is
+    // due today (so the single runDue tick generates a real future order);
+    // Beto and Carla fall later within the week.
+    const primarySubscription = this.subscriptions.create(nutriActor, {
+      patientId: ana.id,
+      cadence: 'weekly',
+      items: [
+        {
+          compositionId: composition.id,
+          packagingId: packaging.id,
+          quantity: 4,
+        },
+      ],
+      deliveryWindow: { slot: '12:00-12:30', regionCode: '0451' },
+      startDate: todayIso(),
+    });
+
+    this.subscriptions.create(nutriActor, {
+      patientId: beto.id,
+      cadence: 'biweekly',
+      items: [
+        {
+          compositionId: composition.id,
+          packagingId: packaging.id,
+          quantity: 3,
+        },
+      ],
+      deliveryWindow: { slot: '19:00-19:30', regionCode: '0451' },
+      startDate: addDaysIso(todayIso(), 2),
+    });
+
+    this.subscriptions.create(nutriActor, {
+      patientId: carla.id,
+      cadence: 'monthly',
+      items: [
+        {
+          compositionId: composition.id,
+          packagingId: packaging.id,
+          quantity: 5,
+        },
+      ],
+      deliveryWindow: { slot: '12:00-12:30', regionCode: '0702' },
+      startDate: addDaysIso(todayIso(), 5),
+    });
+
+    // Simulate one scheduler tick so there is a generated future order for
+    // the forecast to project against (only Ana's weekly is due today).
+    this.subscriptions.runDue();
+
+    // Historical delivered/paid orders spread across the last ~2 weeks feed
+    // the 28-day forecast baseline (fromHistory > 0). Deterministic in
+    // structure: fixed patients/slots/quantities, dates relative to today.
+    const history: {
+      patientId: string;
+      daysAgo: number;
+      slot: string;
+      regionCode: string;
+      quantity: number;
+      deliver: boolean;
+    }[] = [
+      {
+        patientId: ana.id,
+        daysAgo: 14,
+        slot: '12:00-12:30',
+        regionCode: '0451',
+        quantity: 4,
+        deliver: true,
+      },
+      {
+        patientId: beto.id,
+        daysAgo: 12,
+        slot: '19:00-19:30',
+        regionCode: '0451',
+        quantity: 3,
+        deliver: true,
+      },
+      {
+        patientId: ana.id,
+        daysAgo: 7,
+        slot: '12:00-12:30',
+        regionCode: '0451',
+        quantity: 4,
+        deliver: true,
+      },
+      {
+        patientId: carla.id,
+        daysAgo: 5,
+        slot: '12:00-12:30',
+        regionCode: '0702',
+        quantity: 5,
+        deliver: false,
+      },
+      {
+        patientId: beto.id,
+        daysAgo: 3,
+        slot: '19:00-19:30',
+        regionCode: '0451',
+        quantity: 2,
+        deliver: false,
+      },
+    ];
+
+    for (const h of history) {
+      const order = this.orders.create(nutriActor, {
+        patientId: h.patientId,
+        deliveryWindow: {
+          date: addDaysIso(todayIso(), -h.daysAgo),
+          slot: h.slot,
+          regionCode: h.regionCode,
+        },
+        items: [
+          {
+            compositionId: composition.id,
+            packagingId: packaging.id,
+            quantity: h.quantity,
+          },
+        ],
+      });
+      this.orders.submit(nutriActor, order.id);
+      this.orders.patientConfirm({ role: 'patient' }, order.id);
+      this.orders.markAsPaid(order.id);
+      if (h.deliver) {
+        // Kitchen-side transitions require the kitchen or admin role.
+        this.orders.startProduction(kitchenActor, order.id);
+        this.orders.markReady(kitchenActor, order.id);
+        this.orders.markDelivered(kitchenActor, order.id);
+      }
+    }
+
     this.logger.log(
-      `Seed completed. clinic=${clinic.id} admin=${admin.email} nutri=${nutritionist.email} kitchen=${kitchen.email} patient=${patient.email} demoOrderCode=${sampleOrder.code}`,
+      `Seed completed. clinic=${clinic.id} admin=${admin.email} nutri=${nutritionist.email} kitchen=${kitchen.email} patient=${patient.email} demoOrderCode=${sampleOrder.code} selfServiceCode=${selfServiceCode.code} subscriptionId=${primarySubscription.id}`,
     );
   }
+}
+
+function addDaysIso(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
 }
 
 function tomorrowIso(): string {

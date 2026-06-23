@@ -40,3 +40,13 @@ export class ValidationDomainError extends DomainError {
     super(code, message, HttpStatus.UNPROCESSABLE_ENTITY, details);
   }
 }
+
+export class TooManyRequestsDomainError extends DomainError {
+  constructor(
+    code = 'RATE_LIMITED',
+    message = 'Too many requests. Please slow down.',
+    details?: unknown,
+  ) {
+    super(code, message, HttpStatus.TOO_MANY_REQUESTS, details);
+  }
+}
